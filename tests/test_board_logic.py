@@ -166,9 +166,15 @@ class TestWinConditions:
         assert s.tiger_mobility() == (0, 0, 4)
         assert s.check_winner() == GOAT
 
-    def test_trapped_tigers_lose_even_during_placement(self):
-        s = position(CORNERS, TRAPPED_ALL, turn=GOAT, phase='PLACEMENT')
+    def test_trapped_tigers_lose_during_placement_too(self):
+        s = position(CORNERS, TRAPPED_ALL, turn=TIGER, phase='PLACEMENT')
         assert s.check_winner() == GOAT
+
+    def test_trapped_tigers_are_not_lost_until_their_turn(self):
+        # Tournament rule: with the goats to move, a forced goat move might free a tiger.
+        s = position(CORNERS, TRAPPED_ALL, turn=GOAT, captured=3)
+        assert s.tiger_mobility() == (0, 0, 4)
+        assert s.check_winner() is None
 
     def test_tigers_win_when_goats_cannot_move(self):
         tigers = [(0, 1), (1, 0), (1, 1), (4, 4)]
