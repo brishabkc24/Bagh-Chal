@@ -72,7 +72,7 @@ class BaghChalGUI:
 
        
         w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        self.full_bg_img = load_image("outer_bg.png", (w, h))
+        self.full_bg_img = load_image("outer_bg.jpg", (w, h))
         if self.full_bg_img:
             tk.Label(self.root, image=self.full_bg_img).place(x=0, y=0, relwidth=1, relheight=1)
 
