@@ -15,7 +15,7 @@ a = Analysis(
         ('goat.png', '.'),
         ('tiger.png', '.'),
         ('inner_board.png', '.'),
-        ('outer_bg.png', '.'),
+        ('outer_bg.jpg', '.'),
     ],
     hiddenimports=[],
     hookspath=[],

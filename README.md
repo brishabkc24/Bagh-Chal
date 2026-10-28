@@ -71,8 +71,9 @@ python -m PyInstaller main.spec --noconfirm --clean
 ```
 
 The single-file build appears at `dist\BaghChal.exe` with the images bundled,
-so it runs from any folder. `dist` and `build` are ignored by Git; the .exe is
-published through GitHub Releases.
+so it runs from any folder. `dist` and `build` are ignored by Git. Pushing a tag
+such as `v1.1` makes GitHub Actions build the .exe and publish it as a release
+automatically.
 
 ## Project layout
 
@@ -85,6 +86,8 @@ published through GitHub Releases.
 | `tests/` | pytest suite for the engine and the AI |
 | `.github/workflows/tests.yml` | CI: tests on four Python versions, then the .exe build |
 | `main.spec` | PyInstaller build definition |
+| `*.png`, `outer_bg.jpg` | Board, piece and background art |
+| `LICENSE` | MIT licence |
 | `docs/` | Screenshots and the demo GIF used above |
 | `CORRECTIONS.md` | Changelog of bugs found and fixed during review |
 
@@ -110,3 +113,7 @@ Positive is good for the tigers. The weights live at the top of `ai.py`.
 | Each trapped tiger | -250 |
 | Tiger on the centre point | +25 |
 | Win / loss | +10000 / -10000, plus remaining depth so nearer wins are preferred |
+
+## License
+
+MIT. See [LICENSE](LICENSE).

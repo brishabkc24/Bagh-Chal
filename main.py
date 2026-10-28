@@ -29,7 +29,7 @@ class MainMenu:
             except tk.TclError:
                 pass
             
-        self.bg_image = load_image("outer_bg.png", (w, h))
+        self.bg_image = load_image("outer_bg.jpg", (w, h))
         if self.bg_image:
             tk.Label(self.root, image=self.bg_image).place(x=0, y=0, relwidth=1, relheight=1)
         else:
