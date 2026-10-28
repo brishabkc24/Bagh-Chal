@@ -18,7 +18,7 @@ class MainMenu:
             widget.destroy()
         self.app = None
 
-        self.root.title("Bagh Chal - College Project")
+        self.root.title("Bagh Chal")
         w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         self.root.geometry(f"{w}x{h}")
         try:
