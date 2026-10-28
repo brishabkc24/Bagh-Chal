@@ -408,7 +408,8 @@ class BaghChalGUI:
         self.root.config(cursor="watch")
         self.root.update_idletasks()   # redraw only: queued clicks wait for the search
 
-        hint_ai = BaghChalAI(ai_player=self.logic.turn, depth=4)
+        depth = self.ai.max_depth if self.ai else 4      # as strong as the opponent
+        hint_ai = BaghChalAI(ai_player=self.logic.turn, depth=depth)
         best_move = hint_ai.get_best_move(self.logic)
         self.root.config(cursor="")
 
