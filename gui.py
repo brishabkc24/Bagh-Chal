@@ -266,7 +266,7 @@ class BaghChalGUI:
  
         self.log_move("AI thinking...")
         self.root.config(cursor="watch")
-        self.root.update()
+        self.root.update_idletasks()   # redraw only: queued clicks wait for the search
 
         old_score = evaluate(self.logic)
         best_move = self.ai.get_best_move(self.logic)
@@ -406,7 +406,7 @@ class BaghChalGUI:
 
         self.log_move("Hint: AI calculating...")
         self.root.config(cursor="watch")
-        self.root.update()
+        self.root.update_idletasks()   # redraw only: queued clicks wait for the search
 
         hint_ai = BaghChalAI(ai_player=self.logic.turn, depth=4)
         best_move = hint_ai.get_best_move(self.logic)
