@@ -102,7 +102,7 @@ placements get searched first, which also breaks ties sensibly.
 - Piece images keep their aspect ratio (`goat.png` is 677×369; it was squashed into
   70×70). Transparent margins are cropped and the goat gets a 90 px box.
 - `main.spec` lists the four PNG files in `datas` so the images ship with the .exe
-  (the old `dist/` had no images and no Pillow, and was built before your last code
+  (the old `dist/` had no images and no Pillow, and was built before the last code
   edits).
 - `requirements.txt` added. Exclude `baghchal/` (virtualenv, ~90 MB), `build/`, `dist/`
   and `__pycache__/` from the submission zip.

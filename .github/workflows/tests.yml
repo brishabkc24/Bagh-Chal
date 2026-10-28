@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    name: pytest on Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install test dependencies
+        run: pip install pytest
+      - name: Run the test suite
+        run: python -m pytest
+
+  build-exe:
+    name: Build Windows .exe
+    runs-on: windows-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install build dependencies
+        run: pip install -r requirements.txt
+      - name: Build with PyInstaller
+        run: python -m PyInstaller main.spec --noconfirm --clean
+      - name: Upload the executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: BaghChal-windows
+          path: dist/BaghChal.exe
