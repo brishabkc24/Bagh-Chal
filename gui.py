@@ -357,7 +357,13 @@ class BaghChalGUI:
 
  
     def show_ai_explanation(self):
+        # One analysis window at a time: close the previous one so its numbers
+        # can never go stale behind a newer board.
+        old = getattr(self, 'explain_win', None)
+        if old is not None and old.winfo_exists():
+            old.destroy()
         explain_win = tk.Toplevel(self.root)
+        self.explain_win = explain_win
         explain_win.title("Minimax Algorithm Analysis")
         explain_win.geometry("470x560")
         explain_win.configure(bg=self.bg_dark)
