@@ -56,7 +56,7 @@ class BaghChalGUI:
         self.logic = logic
         self.ai = ai
         self.on_menu_return = on_menu_return
-        self.root.title("Bagh Chal - College Project")
+        self.root.title("Bagh Chal")
 
         # --- THEME COLORS ---
         self.bg_dark = "#2C1E16"
