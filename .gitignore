@@ -1,0 +1,12 @@
+# PyInstaller output (rebuild with: python -m PyInstaller main.spec --noconfirm --clean)
+build/
+dist/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Virtual environments
+baghchal/
+.venv/
+venv/
