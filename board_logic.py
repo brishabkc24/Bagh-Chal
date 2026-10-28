@@ -256,10 +256,14 @@ class BaghChalLogic:
             return TIGER
 
  
-        if total_tiger_moves is None:
-            total_tiger_moves = self.get_total_tiger_moves()
-        if total_tiger_moves == 0:
-            return GOAT
+        # Condition 2: tigers to move and none can -> Goats win. Judged on the
+        # tigers' turn only, as in tournament play: on the goats' turn a forced
+        # goat move could still free a tiger.
+        if self.turn == TIGER:
+            if total_tiger_moves is None:
+                total_tiger_moves = self.get_total_tiger_moves()
+            if total_tiger_moves == 0:
+                return GOAT
 
         # Condition 3: Goats to move but have no legal move -> Tigers win
         if self.phase == 'MOVEMENT' and self.turn == GOAT and not self.goats_can_move():

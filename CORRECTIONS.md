@@ -137,3 +137,8 @@ Explain AI Math, full games to the win banner, return to menu).
 `inner_board.png` is 640x326 and was stretched into the 580x580 board.
 `load_image` now cover-fits (centre crop to the target aspect ratio, then resize)
 whenever `keep_aspect` is False.
+
+### H5. Trapped tigers lose on their own turn — `board_logic.py` `check_winner`
+The goat win for four trapped tigers is now judged on the tigers' turn only, as
+in tournament play. The AI search also counts repetitions for simulated moves, so
+a side that is ahead no longer shuttles into a draw it could not see.
