@@ -50,6 +50,8 @@ class BaghChalLogic:
         # never the AI's simulated moves.
         self.position_counts = {}
         self.repetition_draw = False
+        # Draw flags saved by execute_simulated_move, restored by undo_simulated_move
+        self._sim_repetition = []
  
     def get_piece(self, row, col):
         """Returns what is currently at the specified grid intersection."""
@@ -111,7 +113,7 @@ class BaghChalLogic:
         saved to history (so Undo works) and counted for repetition.
         Used by the GUI to play the AI's chosen move."""
         self.save_state()
-        self.execute_simulated_move(move)
+        self._apply(move)
         self._record_position()
 
    
@@ -155,6 +157,17 @@ class BaghChalLogic:
         self.position_counts[key] = self.position_counts.get(key, 0) + 1
         if self.position_counts[key] >= 3:
             self.repetition_draw = True
+
+    def _unrecord_position(self):
+        """Reverses _record_position for the position currently on the board."""
+        if self.phase != 'MOVEMENT':
+            return
+        key = self._position_key()
+        n = self.position_counts.get(key, 0)
+        if n <= 1:
+            self.position_counts.pop(key, None)
+        else:
+            self.position_counts[key] = n - 1
 
      
     def is_adjacent(self, r1, c1, r2, c2):
@@ -288,7 +301,22 @@ class BaghChalLogic:
 
  
     def execute_simulated_move(self, move):
-        """Applies a move instantly for AI calculation (no history, no repetition count)."""
+        """Applies a move for the AI search. No history entry is made, but the
+        position IS counted for the repetition rule, so a line that repeats a
+        position three times is scored as the draw it really is. Must be paired
+        with undo_simulated_move."""
+        self._apply(move)
+        self._sim_repetition.append(self.repetition_draw)
+        self._record_position()
+
+    def undo_simulated_move(self, move):
+        """Reverses execute_simulated_move: board, counts and draw flag."""
+        self._unrecord_position()
+        self.repetition_draw = self._sim_repetition.pop()
+        self._revert(move)
+
+    def _apply(self, move):
+        """Puts a move on the board. Touches neither history nor repetition counts."""
         move_type = move[0]
 
         if move_type == 'PLACE':
@@ -315,8 +343,8 @@ class BaghChalLogic:
             self.goats_captured += 1
             self.turn = GOAT
 
-    def undo_simulated_move(self, move):
-        """Reverses a simulated move to restore the exact previous board state."""
+    def _revert(self, move):
+        """Takes a move off the board again (the inverse of _apply)."""
         move_type = move[0]
 
         if move_type == 'PLACE':

@@ -184,14 +184,22 @@ class TestWinConditions:
         assert s.check_winner() is None
 
 
+def shuttle_position():
+    """Tiger (0,0) and goat (2,2) can shuttle back and forth without captures."""
+    goats = ([(1, c) for c in range(5)] + [(3, c) for c in range(5)]
+             + [(4, 1), (4, 2), (4, 3), (0, 2), (0, 3), (2, 0), (2, 2)])
+    return position(CORNERS, goats, turn=TIGER, captured=3)
+
+
+SHUTTLE_CYCLE = [('MOVE', 0, 0, 0, 1), ('MOVE', 2, 2, 2, 3),
+                 ('MOVE', 0, 1, 0, 0), ('MOVE', 2, 3, 2, 2)]
+
+
 class TestThreefoldRepetition:
     def _shuttle_position(self):
-        goats = ([(1, c) for c in range(5)] + [(3, c) for c in range(5)]
-                 + [(4, 1), (4, 2), (4, 3), (0, 2), (0, 3), (2, 0), (2, 2)])
-        return position(CORNERS, goats, turn=TIGER, captured=3)
+        return shuttle_position()
 
-    CYCLE = [('MOVE', 0, 0, 0, 1), ('MOVE', 2, 2, 2, 3),
-             ('MOVE', 0, 1, 0, 0), ('MOVE', 2, 3, 2, 2)]
+    CYCLE = SHUTTLE_CYCLE
 
     def test_third_occurrence_is_a_draw(self):
         s = self._shuttle_position()
@@ -208,6 +216,17 @@ class TestThreefoldRepetition:
         assert s.check_winner() == 'DRAW'
         assert s.undo()
         assert s.check_winner() is None
+
+    def test_simulated_move_sees_the_third_repetition(self):
+        s = shuttle_position()
+        for i in range(8):
+            play(s, SHUTTLE_CYCLE[i % 4])
+        counts = dict(s.position_counts)
+        s.execute_simulated_move(SHUTTLE_CYCLE[0])      # third time this position occurs
+        assert s.check_winner() == 'DRAW'
+        s.undo_simulated_move(SHUTTLE_CYCLE[0])
+        assert s.check_winner() is None and not s.repetition_draw
+        assert s.position_counts == counts
 
     def test_positions_are_not_counted_during_placement(self):
         s = BaghChalLogic()

@@ -5,7 +5,7 @@ import pytest
 from board_logic import BaghChalLogic, TIGER, GOAT
 from ai import (BaghChalAI, evaluate, score_breakdown, static_score, terminal_score,
                 WIN_SCORE, W_CAPTURE, W_THREAT, W_MOBILITY, W_TRAPPED, W_CENTER)
-from helpers import CORNERS, TRAPPED_ALL, position
+from helpers import CORNERS, TRAPPED_ALL, position, play
 
 
 class TestScoring:
@@ -108,6 +108,36 @@ class TestMoveChoice:
         BaghChalAI(ai_player=TIGER, depth=4).get_best_move(s)
         assert s.grid == grid_before and s.turn == TIGER
         assert len(s.history) == history_len and s.position_counts == {}
+
+
+class TestRepetitionAwareness:
+    def _tiger_ahead_after_two_cycles(self):
+        # Only the (0,0) tiger can move: to (0,1), which threatens the (1,1) goat,
+        # or to (1,0), which threatens nothing. Tigers lead 2-0 on captures.
+        goats = [(0, 2), (0, 3), (1, 1), (1, 2), (1, 3), (1, 4), (2, 0), (2, 2), (2, 3),
+                 (2, 4), (3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (4, 1), (4, 2), (4, 3)]
+        s = position(CORNERS, goats, turn=TIGER, captured=2)
+        cycle = [('MOVE', 0, 0, 0, 1), ('MOVE', 2, 0, 2, 1),
+                 ('MOVE', 0, 1, 0, 0), ('MOVE', 2, 1, 2, 0)]
+        for i in range(8):                       # every position now seen twice
+            play(s, cycle[i % 4])
+        assert s.check_winner() is None
+        return s
+
+    @pytest.mark.parametrize("depth", [1, 2, 4])
+    def test_tiger_ahead_avoids_the_drawing_shuttle(self, depth):
+        s = self._tiger_ahead_after_two_cycles()
+        drawing_move = ('MOVE', 0, 0, 0, 1)
+        legal = s.get_all_legal_moves(TIGER)
+        assert drawing_move in legal and len(legal) == 2
+        move = BaghChalAI(ai_player=TIGER, depth=depth).get_best_move(s)
+        assert move in legal and move != drawing_move
+
+    def test_search_restores_repetition_counts(self):
+        s = self._tiger_ahead_after_two_cycles()
+        counts = dict(s.position_counts)
+        BaghChalAI(ai_player=TIGER, depth=4).get_best_move(s)
+        assert s.position_counts == counts and not s.repetition_draw
 
 
 class TestSelfPlay:

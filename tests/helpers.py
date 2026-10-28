@@ -29,7 +29,8 @@ def position(tigers, goats, turn=TIGER, phase='MOVEMENT', captured=0):
 
 
 def snapshot(s):
-    return (tuple(map(tuple, s.grid)), s.turn, s.phase, s.goats_placed, s.goats_captured)
+    return (tuple(map(tuple, s.grid)), s.turn, s.phase, s.goats_placed, s.goats_captured,
+            dict(s.position_counts), s.repetition_draw)
 
 
 def play(s, move):
