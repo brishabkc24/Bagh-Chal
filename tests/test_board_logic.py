@@ -322,3 +322,64 @@ class TestMoveGeneration:
             moves = s.get_all_legal_moves(s.turn)
             assert moves, "no legal move but no winner declared"
             s.apply_move(rng.choice(moves))
+
+
+class TestBoardMarkers:
+    """Queries the GUI uses to mark goats in danger, trapped tigers and destinations."""
+
+    def test_threatened_goats_are_the_ones_a_tiger_can_jump(self):
+        s = position(CORNERS, [(0, 1), (1, 0), (2, 2)], turn=TIGER, phase='PLACEMENT')
+        assert s.threatened_goats() == {(0, 1), (1, 0)}
+
+    def test_goat_with_a_guarded_landing_point_is_safe(self):
+        s = position(CORNERS, [(0, 1), (0, 2)], turn=TIGER, phase='PLACEMENT')
+        assert s.threatened_goats() == set()
+
+    def test_goat_threatened_by_two_tigers_is_listed_once(self):
+        s = position([(2, 1), (1, 2), (4, 0), (4, 4)], [(2, 2)], turn=TIGER, phase='PLACEMENT')
+        assert s.tiger_mobility()[1] == 2
+        assert s.threatened_goats() == {(2, 2)}
+
+    def test_trapped_tigers_lists_exactly_the_blocked_ones(self):
+        goats = [g for g in TRAPPED_ALL if g != (0, 1)]       # frees the (0,0) tiger only
+        s = position(CORNERS, goats, turn=TIGER, captured=4)
+        assert s.trapped_tigers() == [(0, 4), (4, 0), (4, 4)]
+        assert position(CORNERS, TRAPPED_ALL, captured=3).trapped_tigers() == CORNERS
+        assert BaghChalLogic().trapped_tigers() == []
+
+    def test_markers_agree_with_the_move_generator_on_random_boards(self):
+        rng = random.Random(31)
+        s = BaghChalLogic()
+        for _ in range(600):
+            if s.check_winner() is not None:
+                s = BaghChalLogic()
+            _, jumps, trapped = s.tiger_mobility()
+            assert len(s.trapped_tigers()) == trapped
+            victims = {((m[1] + m[3]) // 2, (m[2] + m[4]) // 2)
+                       for m in s.get_all_legal_moves(TIGER) if m[0] == 'JUMP'}
+            assert s.threatened_goats() == victims
+            assert (jumps == 0) == (not victims)
+            s.apply_move(rng.choice(s.get_all_legal_moves(s.turn)))
+
+    def test_legal_moves_from_a_piece(self):
+        s = position(CORNERS, [(0, 1), (2, 2)], turn=TIGER, phase='PLACEMENT')
+        assert sorted(s.legal_moves_from(0, 0)) == [
+            ('JUMP', 0, 0, 0, 2), ('MOVE', 0, 0, 1, 0), ('MOVE', 0, 0, 1, 1)]
+        assert s.legal_moves_from(0, 1) == []          # a goat, on the tigers' turn
+        assert s.legal_moves_from(3, 3) == []          # an empty point
+
+    def test_goats_have_no_moves_from_a_point_during_placement(self):
+        s = BaghChalLogic()
+        s.place_goat(2, 2)
+        s.move_piece(0, 0, 0, 1)
+        assert s.turn == GOAT and s.legal_moves_from(2, 2) == []
+
+    def test_legal_moves_from_covers_every_move_of_the_side(self):
+        rng = random.Random(5)
+        s = fill_board(BaghChalLogic())
+        for _ in range(200):
+            if s.check_winner() is not None:
+                break
+            per_piece = [m for r in range(5) for c in range(5) for m in s.legal_moves_from(r, c)]
+            assert sorted(per_piece) == sorted(s.get_all_legal_moves(s.turn))
+            s.apply_move(rng.choice(s.get_all_legal_moves(s.turn)))

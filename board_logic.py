@@ -248,6 +248,42 @@ class BaghChalLogic:
         return False
 
  
+    def threatened_goats(self):
+        """Points of the goats a tiger could capture right now."""
+        grid = self.grid
+        danger = set()
+        for r in range(5):
+            for c in range(5):
+                if grid[r][c] == TIGER:
+                    for (nr, nc), (jr, jc) in NEIGHBOURS[(r, c)]:
+                        if grid[nr][nc] == GOAT and jr is not None and grid[jr][jc] == EMPTY:
+                            danger.add((nr, nc))
+        return danger
+
+    def trapped_tigers(self):
+        """Points of the tigers that have no legal move at all."""
+        grid = self.grid
+        trapped = []
+        for r in range(5):
+            for c in range(5):
+                if grid[r][c] == TIGER:
+                    for (nr, nc), (jr, jc) in NEIGHBOURS[(r, c)]:
+                        target = grid[nr][nc]
+                        if target == EMPTY or (target == GOAT and jr is not None
+                                               and grid[jr][jc] == EMPTY):
+                            break
+                    else:
+                        trapped.append((r, c))
+        return trapped
+
+    def legal_moves_from(self, row, col):
+        """Legal moves of the piece on (row, col). Empty unless that piece
+        belongs to the side to move (goats cannot move during placement)."""
+        if self.grid[row][col] != self.turn:
+            return []
+        return [m for m in self.get_all_legal_moves(self.turn)
+                if m[0] != 'PLACE' and (m[1], m[2]) == (row, col)]
+
     def check_winner(self, total_tiger_moves=None):
         """Returns TIGER, GOAT, 'DRAW', or None if the game is ongoing.
         Pass total_tiger_moves if you already computed it (saves a board scan)."""
