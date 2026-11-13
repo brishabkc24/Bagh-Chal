@@ -3,7 +3,8 @@
 Line numbers refer to the ORIGINAL files. Every item below was reproduced on the
 original code first, then re-tested on the patched code (logic tests, 5,000
 random boards, AI self-play, and the real Tk window driven under a virtual
-display). Section H lists a later follow-up pass.
+display). Section H lists a later follow-up pass, section I the gameplay
+additions made after it.
 
 ## A. Game-breaking
 
@@ -142,3 +143,46 @@ whenever `keep_aspect` is False.
 The goat win for four trapped tigers is now judged on the tigers' turn only, as
 in tournament play. The AI search also counts repetitions for simulated moves, so
 a side that is ahead no longer shuttles into a draw it could not see.
+
+## I. Gameplay additions (11 Nov 2026)
+
+### I1. Board guidance — `gui.py`, `board_logic.py`
+Selecting a piece shows its destinations (`legal_moves_from`): green dots for
+steps, a red target plus a ring on the victim for captures. The last move leaves
+a gold trail. With "Show threats" ticked, goats that can be captured right now
+(`threatened_goats`) carry a red `!` and tigers with no move (`trapped_tigers`)
+a TRAPPED tag. Human moves are now matched against the generated legal moves and
+played through `apply_move`, the same path the AI uses.
+
+### I2. Animation, sound, result screen — `gui.py`, `sounds.py`
+Moves slide, a captured goat disappears as the tiger passes over it, a win
+throws confetti. Sounds are synthesised in `sounds.py` (no audio files) and can
+be muted. All timed jobs go through `later()` so `cancel_all()` stops every one
+of them on Undo, New Game and Return to Main Menu.
+
+### I3. Replay value — `ai.py`, `gui.py`, `main.py`
+- `BaghChalAI(rng=...)` picks at random among the moves tied for the best
+  score while the goats are being placed, so every game opens differently. Each
+  root move is searched with a window one point below the best, so a tie is
+  exact and a worse move is never played. Without an rng (tests, Hint) the
+  answer is deterministic as before.
+- The randomness stops once all 20 goats are down. Tried for the whole game
+  first: random shuffling kept dodging the threefold repetition, and 3 of 6
+  Medium self-play games were still running after 300 moves.
+- New Game and Swap Sides on the game screen, a session score, a Watch AI vs AI
+  mode with Pause, meters for goats in hand / captured / tigers trapped, and
+  keyboard shortcuts (Ctrl+Z, H, M, Esc).
+- Watch mode calls a draw after 100 moves in a row without a capture
+  (`WATCH_DRAW_AFTER` in `gui.py`). The side that is ahead steers clear of the
+  repetition draw, so some AI-against-AI endings never finished. In 24 Medium
+  self-play games the limit stopped 8, of which 3 would have been won later.
+  Games with a human are not affected.
+
+### I4. Undo on an untouched game stalled the AI — `gui.py` `undo_action`
+- Was: playing tigers, clicking Undo before the AI goat's opening placement
+  cancelled the pending AI job and returned early, so the AI never moved.
+- Now: Undo always ends by rescheduling the AI when it is the AI's turn.
+
+### I5. Long log lines were cut off
+Capture and draw messages were wider than the log list. Shortened to fit
+("TIGER captured (1,1) -> (1,3)").
