@@ -5,7 +5,7 @@ import pytest
 from board_logic import BaghChalLogic, TIGER, GOAT
 from ai import (BaghChalAI, evaluate, score_breakdown, static_score, terminal_score,
                 WIN_SCORE, W_CAPTURE, W_THREAT, W_MOBILITY, W_TRAPPED, W_CENTER)
-from helpers import CORNERS, TRAPPED_ALL, position, play
+from helpers import CORNERS, TRAPPED_ALL, position, play, snapshot, fill_board
 
 
 class TestScoring:
@@ -138,6 +138,102 @@ class TestRepetitionAwareness:
         counts = dict(s.position_counts)
         BaghChalAI(ai_player=TIGER, depth=4).get_best_move(s)
         assert s.position_counts == counts and not s.repetition_draw
+
+
+class TestVariety:
+    """With an rng the AI may play any move tied for best, and never a worse one."""
+
+    @staticmethod
+    def _exact_scores(s, side, depth):
+        """Full-window value of every legal move, searched one by one."""
+        scores = {}
+        for move in s.get_all_legal_moves(side):
+            s.execute_simulated_move(move)
+            scores[move], _ = BaghChalAI(side, depth).minimax(
+                s, depth - 1, float('-inf'), float('inf'), side != TIGER)
+            s.undo_simulated_move(move)
+        return scores
+
+    def test_varied_choice_is_always_one_of_the_best_moves(self):
+        rng = random.Random(11)
+        checked = 0
+        for _ in range(40):
+            s = BaghChalLogic()
+            for _ in range(rng.randint(0, 45)):
+                if s.check_winner() is not None:
+                    break
+                s.apply_move(rng.choice(s.get_all_legal_moves(s.turn)))
+            if s.check_winner() is not None:
+                continue
+            side, depth = s.turn, rng.choice([1, 2, 3])
+            scores = self._exact_scores(s, side, depth)
+            best = max(scores.values()) if side == TIGER else min(scores.values())
+            plain = BaghChalAI(side, depth)
+            plain.get_best_move(s)
+            assert plain.last_score == best
+            for seed in range(5):
+                ai = BaghChalAI(side, depth, rng=random.Random(seed))
+                assert scores[ai.get_best_move(s)] == best
+                assert ai.last_score == best
+            checked += 1
+        assert checked >= 30
+
+    def test_openings_differ_between_games(self):
+        s = BaghChalLogic()
+        openings = {BaghChalAI(GOAT, 2, rng=random.Random(seed)).get_best_move(s)
+                    for seed in range(30)}
+        assert len(openings) > 1
+        # the edge-first preference still holds among the tied moves
+        assert all(min(r, c, 4 - r, 4 - c) == 0 for _, r, c in openings)
+
+    def test_variety_ends_with_the_placement_phase(self):
+        # Once all 20 goats are down the varied AI must answer exactly like the
+        # plain one, so level endings can repeat and end by the threefold rule.
+        rng = random.Random(21)
+        s = fill_board(BaghChalLogic())
+        for _ in range(50):
+            if s.check_winner() is not None:
+                s = fill_board(BaghChalLogic())
+            assert s.phase == 'MOVEMENT'
+            expected = BaghChalAI(s.turn, 2).get_best_move(s)
+            for seed in range(4):
+                assert BaghChalAI(s.turn, 2, rng=random.Random(seed)).get_best_move(s) == expected
+            s.apply_move(rng.choice(s.get_all_legal_moves(s.turn)))
+
+    def test_without_rng_the_answer_never_changes(self):
+        s = BaghChalLogic()
+        assert len({BaghChalAI(GOAT, 3).get_best_move(s) for _ in range(5)}) == 1
+
+    def test_variety_returns_the_single_legal_move(self):
+        goats = [g for g in TRAPPED_ALL if g != (0, 1)]
+        s = position(CORNERS, goats, turn=TIGER, captured=3)
+        ai = BaghChalAI(TIGER, 4, rng=random.Random(3))
+        assert ai.get_best_move(s) == ('MOVE', 0, 0, 0, 1)
+
+    @pytest.mark.parametrize("depth", [1, 2, 4])
+    def test_varied_tiger_still_avoids_the_drawing_shuttle(self, depth):
+        s = TestRepetitionAwareness()._tiger_ahead_after_two_cycles()
+        move = BaghChalAI(TIGER, depth, rng=random.Random(depth)).get_best_move(s)
+        assert move == ('MOVE', 0, 0, 1, 0)
+
+    def test_variety_leaves_the_board_untouched(self):
+        s = BaghChalLogic()
+        s.place_goat(2, 2)
+        before = snapshot(s)
+        BaghChalAI(TIGER, 4, rng=random.Random(1)).get_best_move(s)
+        assert snapshot(s) == before and len(s.history) == 1
+
+    def test_varied_self_play_is_legal_and_ends(self):
+        rng = random.Random(8)
+        s = BaghChalLogic()
+        bots = {TIGER: BaghChalAI(TIGER, 2, rng=rng), GOAT: BaghChalAI(GOAT, 2, rng=rng)}
+        plies = 0
+        while s.check_winner() is None and plies < 400:
+            move = bots[s.turn].get_best_move(s)
+            assert move in s.get_all_legal_moves(s.turn)
+            s.apply_move(move)
+            plies += 1
+        assert s.check_winner() in (TIGER, GOAT, 'DRAW')
 
 
 class TestSelfPlay:
