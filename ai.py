@@ -56,11 +56,29 @@ def score_breakdown(state):
     return rows, sum(points for *_, points in rows)
 
 
+def _tiger_order(move):
+    """Captures first: better move ordering = more Alpha-Beta cutoffs."""
+    return move[0] != 'JUMP'
+
+
+def _goat_order(move):
+    """Edge points are the safest placements, so they are tried first."""
+    return min(move[1], move[2], 4 - move[1], 4 - move[2]) if move[0] == 'PLACE' else 0
+
+
 class BaghChalAI:
-    def __init__(self, ai_player=TIGER, depth=3):
+    def __init__(self, ai_player=TIGER, depth=3, rng=None):
         # The AI plays as TIGER (maximising) or GOAT (minimising)
         self.ai_player = ai_player
         self.max_depth = depth
+        # rng=None: always the first of the best moves, so the same position
+        # gets the same answer (tests, Hint button). With a random.Random the
+        # AI picks among the moves that score exactly the same while the goats
+        # are still being placed, so every game opens differently. It never
+        # plays a move the search rates lower. Once all 20 goats are down it
+        # returns to its first choice: random shuffling there makes level
+        # endings wander instead of repeating into the threefold draw.
+        self.rng = rng
         self.nodes_evaluated = 0
         self.branches_pruned = 0
         self.last_score = 0
@@ -88,8 +106,7 @@ class BaghChalAI:
             return terminal_score(GOAT if is_maximizing_tiger else TIGER, depth), None
 
         if is_maximizing_tiger:
-            # Try captures first: better move ordering = more Alpha-Beta cutoffs
-            moves.sort(key=lambda m: m[0] != 'JUMP')
+            moves.sort(key=_tiger_order)
             best_score = float('-inf')
             best_move = moves[0]          # never None when a legal move exists
             for move in moves:
@@ -105,8 +122,7 @@ class BaghChalAI:
                     break
             return best_score, best_move
         else:  # Minimising (Goat's turn)
-            # Edge points are the safest placements; try them first
-            moves.sort(key=lambda m: min(m[1], m[2], 4 - m[1], 4 - m[2]) if m[0] == 'PLACE' else 0)
+            moves.sort(key=_goat_order)
             best_score = float('inf')
             best_move = moves[0]
             for move in moves:
@@ -130,7 +146,50 @@ class BaghChalAI:
         if current_board_state.turn != self.ai_player:
             return None
         is_maximizing = (self.ai_player == TIGER)
-        score, best_move = self.minimax(current_board_state, self.max_depth,
-                                        float('-inf'), float('inf'), is_maximizing)
+        if self.rng is None or current_board_state.phase != 'PLACEMENT':
+            score, best_move = self.minimax(current_board_state, self.max_depth,
+                                            float('-inf'), float('inf'), is_maximizing)
+        else:
+            score, best_move = self._search_with_variety(current_board_state, is_maximizing)
         self.last_score = score
         return best_move
+
+    def _search_with_variety(self, state, is_maximizing_tiger):
+        """Root search that keeps EVERY move tied for the best score and lets
+        the rng choose between them. Returns (score, move) like minimax.
+
+        Scores are integers, so each root move is searched with a window one
+        point below the best so far: a move that comes back equal to the best
+        is exactly as good, and one that comes back lower is discarded."""
+        moves = state.get_all_legal_moves(TIGER if is_maximizing_tiger else GOAT)
+        if self.max_depth == 0 or not moves or state.check_winner() is not None:
+            return self.minimax(state, self.max_depth, float('-inf'), float('inf'),
+                                is_maximizing_tiger)
+
+        self.nodes_evaluated += 1
+        order = _tiger_order if is_maximizing_tiger else _goat_order
+        moves.sort(key=order)
+        best_score, tied = None, []
+        for move in moves:
+            if best_score is None:
+                alpha, beta = float('-inf'), float('inf')
+            elif is_maximizing_tiger:
+                alpha, beta = best_score - 1, float('inf')
+            else:
+                alpha, beta = float('-inf'), best_score + 1
+            state.execute_simulated_move(move)
+            score, _ = self.minimax(state, self.max_depth - 1, alpha, beta,
+                                    not is_maximizing_tiger)
+            state.undo_simulated_move(move)
+
+            if best_score is None:
+                best_score, tied = score, [move]
+            elif (score > best_score) if is_maximizing_tiger else (score < best_score):
+                best_score, tied = score, [move]
+            elif score == best_score:
+                tied.append(move)
+
+        # Among equal scores keep the ordering preference (a capture, an edge
+        # point), then choose at random.
+        preferred = order(tied[0])
+        return best_score, self.rng.choice([m for m in tied if order(m) == preferred])
